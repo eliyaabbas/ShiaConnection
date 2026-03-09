@@ -1,47 +1,58 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    
+
     // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
-    
     function isImage() {
       return request.resource.contentType.matches('image/.*');
     }
-    
+    function isVideo() {
+      return request.resource.contentType.matches('video/.*');
+    }
     function isPDF() {
       return request.resource.contentType == 'application/pdf';
     }
-    
     function sizeLt(mb) {
       return request.resource.size < mb * 1024 * 1024;
+    }
+    function isAdmin() {
+      return request.auth != null && (request.auth.token.get('admin', false) == true || request.auth.token.get('superAdmin', false) == true);
     }
 
     // Admins can do anything
     match /{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.token.admin == true;
+      allow read, write: if isAdmin();
     }
 
-    // Avatars: readable by all logged-in, writable by owner (Max 5MB, Images only)
+    // ── Avatars ──────────────────────────────────────────────
+    // READ: public (anyone can view profile pictures, even unauthenticated)
+    // WRITE: owner only, images ≤ 5MB
     match /avatars/{userId}/{fileName} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if isOwner(userId) && isImage() && sizeLt(5);
     }
 
-    // Post media: readable by all logged-in, writable by uploader (Max 15MB, Images/Video)
+    // ── Post Media ───────────────────────────────────────────
+    // READ: any signed-in user
+    // WRITE: owner only, images or videos ≤ 20MB
     match /posts/{userId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if isOwner(userId) && 
-                   (isImage() || request.resource.contentType.matches('video/.*')) && 
-                   sizeLt(15);
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) && (isImage() || isVideo()) && sizeLt(20);
     }
 
-    // Resumes: readable by uploader and recruiter, writable by owner (Max 10MB, PDF only)
+    // ── Resumes ──────────────────────────────────────────────
+    // READ: owner only (recruiters get access via Cloud Functions)
+    // WRITE: owner only, PDF ≤ 10MB
     match /resumes/{userId}/{fileName} {
-      allow read: if isOwner(userId); // (Extended via functions for recruiter access)
+      allow read: if isOwner(userId);
       allow write: if isOwner(userId) && isPDF() && sizeLt(10);
     }
   }
 }
+

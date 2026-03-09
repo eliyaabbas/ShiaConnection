@@ -11,7 +11,8 @@ import { storage } from './firebase';
 export const uploadAvatar = (uid, file, onProgress) => {
   return new Promise((resolve) => {
     try {
-      const storageRef = ref(storage, `avatars/${uid}`);
+      const ext = file.name.split('.').pop() || 'jpg';
+      const storageRef = ref(storage, `avatars/${uid}/avatar.${ext}`);
       const uploadTask = uploadBytesResumable(storageRef, file);
 
       uploadTask.on(
@@ -40,11 +41,11 @@ export const uploadAvatar = (uid, file, onProgress) => {
  * @param {File} file - Media file
  * @param {function} onProgress - Optional progress callback
  */
-export const uploadPostMedia = (postId, file, onProgress) => {
+export const uploadPostMedia = (uid, postId, file, onProgress) => {
   return new Promise((resolve) => {
     try {
       const ext = file.name.split('.').pop();
-      const storageRef = ref(storage, `post-media/${postId}.${ext}`);
+      const storageRef = ref(storage, `posts/${uid}/${postId}.${ext}`);
       const uploadTask = uploadBytesResumable(storageRef, file);
 
       uploadTask.on(

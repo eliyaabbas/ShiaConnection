@@ -51,7 +51,7 @@ export default function CreatePost() {
     if (selectedFile) {
       const tempId = `post_${Date.now()}`;
       mediaType = selectedFile.type.startsWith('video/') ? 'video' : 'image';
-      const { url, error } = await uploadPostMedia(tempId, selectedFile, setUploadProgress);
+      const { url, error } = await uploadPostMedia(currentUser.uid, tempId, selectedFile, setUploadProgress);
       if (error) {
         toast.error('Failed to upload media: ' + error);
         setSubmitting(false);

@@ -94,7 +94,7 @@ export default function Profile() {
       setUploadingAvatar(false);
     } else if (type === 'cover') {
       setUploadingCover(true);
-      const { url, error } = await uploadPostMedia(`cover_${currentUser?.uid}`, file);
+      const { url, error } = await uploadPostMedia(currentUser?.uid, `cover_${currentUser?.uid}`, file);
       if (!error && url) await saveField('coverUrl', url);
       else toast.error(error || 'Upload failed');
       setUploadingCover(false);

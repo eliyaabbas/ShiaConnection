@@ -14,6 +14,19 @@ const isSuperAdmin = (context) => {
 admin.initializeApp();
 const db = admin.firestore();
 
+// Helper to create notifications
+const createNotification = async (userId, notificationParams) => {
+  try {
+    await db.collection('users').doc(userId).collection('notifications').add({
+      ...notificationParams,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (err) {
+    console.error(`Failed to create notification for user ${userId}`, err);
+  }
+};
+
 // 1. Trigger when a new user registers
 exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
   try {
@@ -104,6 +117,12 @@ exports.approveRoleChange = functions.https.onCall(async (data, context) => {
   });
   
   await batch.commit();
+
+  await createNotification(requestData.userId, {
+    senderId: context.auth.uid,
+    type: 'role_approved',
+    message: `approved your request for the role: ${requestData.requestedRole}.`
+  });
   
   return { success: true, message: 'Role changed to ' + requestData.requestedRole };
 });
@@ -216,6 +235,13 @@ exports.acceptConnection = functions.https.onCall(async (data, context) => {
   });
   
   await batch.commit();
+
+  await createNotification(requestData.senderId, {
+    senderId: context.auth.uid,
+    type: 'connection_accepted',
+    message: 'accepted your connection request.'
+  });
+
   return { success: true };
 });
 
@@ -261,6 +287,16 @@ exports.rejectRoleChange = functions.https.onCall(async (data, context) => {
   if (!requestId) throw new functions.https.HttpsError('invalid-argument', 'Missing requestId.');
 
   const requestRef = db.collection('roleChangeRequests').doc(requestId);
+  
+  const snap = await requestRef.get();
+  if (snap.exists) {
+    await createNotification(snap.data().userId, {
+      senderId: context.auth.uid,
+      type: 'role_rejected',
+      message: 'rejected your role change request.'
+    });
+  }
+
   await requestRef.update({
     status: 'rejected',
     adminId: context.auth.uid,
@@ -280,7 +316,8 @@ exports.likePost = functions.https.onCall(async (data, context) => {
 
   const likeRef = db.collection('posts').doc(postId).collection('likes').doc(context.auth.uid);
   const postRef = db.collection('posts').doc(postId);
-  const likeSnap = await likeRef.get();
+  
+  const [likeSnap, postSnap] = await Promise.all([likeRef.get(), postRef.get()]);
 
   if (likeSnap.exists) {
     await likeRef.delete();
@@ -289,6 +326,15 @@ exports.likePost = functions.https.onCall(async (data, context) => {
   } else {
     await likeRef.set({ likedAt: admin.firestore.FieldValue.serverTimestamp() });
     await postRef.update({ likesCount: admin.firestore.FieldValue.increment(1) });
+    
+    if (postSnap.exists && postSnap.data().authorId !== context.auth.uid) {
+      await createNotification(postSnap.data().authorId, {
+        senderId: context.auth.uid,
+        type: 'post_like',
+        message: 'liked your post.'
+      });
+    }
+
     return { liked: true };
   }
 });
@@ -398,4 +444,40 @@ exports.removeAdmin = functions.https.onCall(async (data, context) => {
   }
 });
 
+// 14. Triggers for generating notifications
+exports.onConnectionRequestCreated = functions.firestore
+  .document('connectionRequests/{requestId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data();
+    if (data && data.targetId && data.senderId) {
+      await createNotification(data.targetId, {
+        senderId: data.senderId,
+        type: 'connection_request',
+        message: 'sent you a connection request.'
+      });
+    }
+  });
+
+exports.onCommentCreated = functions.firestore
+  .document('posts/{postId}/comments/{commentId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data();
+    const postId = context.params.postId;
+    
+    try {
+      const postSnap = await db.collection('posts').doc(postId).get();
+      if (postSnap.exists) {
+        const postAuthorId = postSnap.data().authorId;
+        if (postAuthorId && postAuthorId !== data.authorId) {
+          await createNotification(postAuthorId, {
+            senderId: data.authorId,
+            type: 'post_comment',
+            message: 'commented on your post.'
+          });
+        }
+      }
+    } catch (err) {
+      console.error(`Error notifying author of post ${postId} about new comment.`, err);
+    }
+  });
 
