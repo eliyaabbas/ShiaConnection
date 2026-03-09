@@ -1,0 +1,89 @@
+# ─── Logs ─────────────────────────────────────────────────────
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firebase-debug.log*
+firebase-debug.*.log*
+firestore-debug.log
+pubsub-debug.log
+ui-debug.log
+database-debug.log
+storage-debug.log
+
+# ─── Firebase ─────────────────────────────────────────────────
+.firebase/
+# .firebaserc  # Uncomment if each dev uses their own Firebase project
+
+# ─── Firebase Emulator Data ───────────────────────────────────
+.emulators/
+emulator-data/
+
+# ─── Environment & Secrets (NEVER commit these) ───────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+secrets.json
+service-account*.json
+*-service-account.json
+google-services.json
+*.pem
+*.key
+
+# ─── Dependencies ─────────────────────────────────────────────
+node_modules/
+functions/node_modules/
+
+# ─── Build Outputs ────────────────────────────────────────────
+dist/
+build/
+build/Release
+frontend/dist/
+frontend/.vite/
+functions/lib/
+
+# ─── npm / Yarn Misc ──────────────────────────────────────────
+.npm
+.npmrc
+*.tgz
+.yarn-integrity
+.node_repl_history
+.eslintcache
+.lock-wscript
+lib-cov
+coverage
+.nyc_output
+*.pid
+*.pid.lock
+pids
+
+# ─── Firebase Dataconnect ─────────────────────────────────────
+.dataconnect
+
+# ─── Editor & IDE ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.iml
+
+# ─── Operating System ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ─── Testing & Coverage ───────────────────────────────────────
+/coverage
+*.snap
+
+# ─── Misc ─────────────────────────────────────────────────────
+.cache/
+.temp/
+tmp/

@@ -1,0 +1,47 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helpers
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isPDF() {
+      return request.resource.contentType == 'application/pdf';
+    }
+    
+    function sizeLt(mb) {
+      return request.resource.size < mb * 1024 * 1024;
+    }
+
+    // Admins can do anything
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Avatars: readable by all logged-in, writable by owner (Max 5MB, Images only)
+    match /avatars/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if isOwner(userId) && isImage() && sizeLt(5);
+    }
+
+    // Post media: readable by all logged-in, writable by uploader (Max 15MB, Images/Video)
+    match /posts/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if isOwner(userId) && 
+                   (isImage() || request.resource.contentType.matches('video/.*')) && 
+                   sizeLt(15);
+    }
+
+    // Resumes: readable by uploader and recruiter, writable by owner (Max 10MB, PDF only)
+    match /resumes/{userId}/{fileName} {
+      allow read: if isOwner(userId); // (Extended via functions for recruiter access)
+      allow write: if isOwner(userId) && isPDF() && sizeLt(10);
+    }
+  }
+}
