@@ -1,7 +1,7 @@
-import { Building, Clock, Loader2, CheckCircle } from 'lucide-react';
+import { Building, Clock, Loader2, CheckCircle, Users } from 'lucide-react';
 import { formatDistanceToNow } from '../../utils/time';
 
-export default function JobCard({ job, currentUser, isApplied, isApplying, onApply }) {
+export default function JobCard({ job, currentUser, isApplied, isApplying, onApply, isRecruiterOwner, loadingApplicants, onViewApplicants }) {
   const postedAt = job.postedAt?.seconds ? formatDistanceToNow(job.postedAt.seconds * 1000) : '';
 
   return (
@@ -33,6 +33,15 @@ export default function JobCard({ job, currentUser, isApplied, isApplying, onApp
             >
               {isApplying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> :
                isApplied ? <><CheckCircle className="w-3.5 h-3.5" /> Applied</> : 'Easy Apply'}
+            </button>
+          )}
+          {isRecruiterOwner && (
+            <button
+              onClick={onViewApplicants}
+              className="ml-auto px-4 py-1.5 rounded-full text-sm font-bold border border-slate-300 text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-1.5"
+            >
+              {loadingApplicants ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
+              Applicants
             </button>
           )}
         </div>

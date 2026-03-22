@@ -233,6 +233,10 @@ exports.acceptConnection = functions.https.onCall(async (data, context) => {
     connectedSince: admin.firestore.FieldValue.serverTimestamp(),
     connectedTo: requestData.senderId
   });
+
+  // Increment connectionsCount on both profiles
+  batch.update(db.collection('users').doc(requestData.senderId), { connectionsCount: admin.firestore.FieldValue.increment(1) });
+  batch.update(db.collection('users').doc(requestData.targetId), { connectionsCount: admin.firestore.FieldValue.increment(1) });
   
   await batch.commit();
 
@@ -481,3 +485,31 @@ exports.onCommentCreated = functions.firestore
     }
   });
 
+// Delete Account
+exports.deleteAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+  }
+  const uid = context.auth.uid;
+
+  // Delete subcollections
+  const deleteCollection = async (colRef) => {
+    const snap = await colRef.get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    if (!snap.empty) await batch.commit();
+  };
+
+  try {
+    await deleteCollection(db.collection('users').doc(uid).collection('notifications'));
+    await deleteCollection(db.collection('users').doc(uid).collection('connections'));
+    // Delete user doc
+    await db.collection('users').doc(uid).delete();
+    // Delete the Firebase Auth account
+    await admin.auth().deleteUser(uid);
+    return { success: true };
+  } catch (err) {
+    console.error('Error deleting account for', uid, err);
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+});

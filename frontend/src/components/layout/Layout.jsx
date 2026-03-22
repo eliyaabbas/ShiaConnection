@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, MessageSquare, Bell, Search, Settings, Bookmark, Star, LogOut, UserCircle, Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { logoutUser } from '../../services/auth';
-import { subscribeNotifications, subscribeChats } from '../../services/db';
+import { subscribeNotifications, subscribeChats, searchUsers } from '../../services/db';
 import Avatar from '../ui/Avatar';
 
 export default function Layout() {
@@ -13,6 +13,10 @@ export default function Layout() {
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [unreadChats, setUnreadChats] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef(null);
 
   const fullName = userProfile
     ? `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim()
@@ -48,6 +52,30 @@ export default function Layout() {
   // Close mobile menu on route change
   useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
 
+  // Search debounce
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); setSearchOpen(false); return; }
+    const timer = setTimeout(async () => {
+      const { data } = await searchUsers(searchQuery, currentUser?.uid);
+      setSearchResults(data || []);
+      setSearchOpen(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, currentUser?.uid]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelectResult = (userId) => {
+    setSearchQuery('');
+    setSearchOpen(false);
+    navigate(`/profile/${userId}`);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
@@ -58,17 +86,39 @@ export default function Layout() {
           {/* Left: Logo + Search */}
           <div className="flex items-center gap-3 lg:gap-6 min-w-0">
             <Link to="/" className="text-lg font-bold tracking-tighter text-primary-600 flex items-center gap-2 flex-shrink-0">
-              <span className="bg-primary-600 text-white w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black shadow-sm">✓</span>
+              <img src="/Logo.png" alt="ShiaConnection Logo" className="w-8 h-8 object-contain drop-shadow-sm" />
               <span className="hidden sm:inline">ShiaConnection</span>
             </Link>
 
-            <div className="hidden sm:flex relative group w-48 md:w-64 lg:w-80">
+            <div ref={searchRef} className="hidden sm:flex relative group w-48 md:w-64 lg:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search people..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
                 className="w-full pl-9 pr-4 py-1.5 bg-slate-100 hover:bg-slate-200 focus:bg-white border border-transparent focus:border-primary-400 focus:ring-2 focus:ring-primary-100 rounded-full text-sm outline-none transition-all placeholder-slate-400"
               />
+              {searchOpen && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50 max-h-72 overflow-y-auto">
+                  {searchResults.map(user => (
+                    <button key={user.id} onClick={() => handleSelectResult(user.id)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left">
+                      <Avatar src={user.avatarUrl} name={`${user.firstName} ${user.lastName}`} size="sm" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-slate-500 truncate">{user.role}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {searchOpen && searchResults.length === 0 && searchQuery.trim() && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 p-4 z-50">
+                  <p className="text-sm text-slate-500 text-center">No results for "{searchQuery}"</p>
+                </div>
+              )}
             </div>
           </div>
 

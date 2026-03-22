@@ -11,6 +11,7 @@ import Onboarding from './pages/Onboarding';
 import Messages from './pages/Messages';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
+import Saved from './pages/Saved';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { ToastContainer } from './components/ui/Toast';
@@ -52,6 +53,7 @@ function App() {
           <Route path="messages/:chatId" element={<Messages />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="saved" element={<Saved />} />
         </Route>
         
         {/* Admin layout */}

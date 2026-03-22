@@ -13,7 +13,7 @@ export const uploadAvatar = (uid, file, onProgress) => {
     try {
       const ext = file.name.split('.').pop() || 'jpg';
       const storageRef = ref(storage, `avatars/${uid}/avatar.${ext}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type });
 
       uploadTask.on(
         'state_changed',
@@ -46,7 +46,7 @@ export const uploadPostMedia = (uid, postId, file, onProgress) => {
     try {
       const ext = file.name.split('.').pop();
       const storageRef = ref(storage, `posts/${uid}/${postId}.${ext}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type });
 
       uploadTask.on(
         'state_changed',
@@ -77,7 +77,7 @@ export const uploadResume = (uid, file, onProgress) => {
   return new Promise((resolve) => {
     try {
       const storageRef = ref(storage, `resumes/${uid}/resume.pdf`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'application/pdf' });
       uploadTask.on(
         'state_changed',
         (snapshot) => {

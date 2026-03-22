@@ -261,6 +261,16 @@ export const getPendingConnectionRequests = (uid, callback) => {
   });
 };
 
+export const getSentConnectionRequests = async (uid) => {
+  try {
+    const snap = await getDocs(query(collection(db, 'connectionRequests'), where('senderId', '==', uid), where('status', '==', 'pending')));
+    return { data: snap.docs.map(d => d.data().targetId), error: null };
+  } catch (error) {
+    return { data: [], error: error.message };
+  }
+};
+
+
 export const sendConnectionRequest = async (senderId, targetId) => {
   try {
     // Check if already exists
@@ -355,12 +365,33 @@ export const getOrCreateChat = async (uid1, uid2) => {
         participants,
         createdAt: serverTimestamp(),
         lastMessage: '',
-        lastMessageTime: serverTimestamp(),
+        // Use a concrete timestamp so Firestore ordering works immediately
+        lastMessageTime: new Date(0),
+        readBy: {},
       });
     }
     return { chatId, error: null };
   } catch (error) {
     return { chatId: null, error: error.message };
+  }
+};
+
+export const sendImageMessage = async (chatId, senderId, imageUrl) => {
+  try {
+    await addDoc(collection(db, 'chats', chatId, 'messages'), {
+      senderId,
+      text: '',
+      imageUrl,
+      createdAt: serverTimestamp(),
+    });
+    await updateDoc(doc(db, 'chats', chatId), {
+      lastMessage: '📷 Image',
+      lastMessageTime: serverTimestamp(),
+      lastSenderId: senderId,
+    });
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 };
 
@@ -395,6 +426,7 @@ export const sendMessage = async (chatId, senderId, text) => {
     return { success: false, error: error.message };
   }
 };
+
 
 // ─────────────────────────────────────────────────────────────
 // NOTIFICATIONS
@@ -482,3 +514,146 @@ export const getAdminUsers = (callback) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   });
 };
+
+// ─────────────────────────────────────────────────────────────
+// SAVED POSTS
+// ─────────────────────────────────────────────────────────────
+
+export const savePost = async (uid, postId) => {
+  try {
+    await setDoc(doc(db, 'users', uid, 'savedPosts', postId), { savedAt: serverTimestamp() });
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const unsavePost = async (uid, postId) => {
+  try {
+    await deleteDoc(doc(db, 'users', uid, 'savedPosts', postId));
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const isPostSaved = async (uid, postId) => {
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'savedPosts', postId));
+    return snap.exists();
+  } catch { return false; }
+};
+
+export const getSavedPosts = async (uid) => {
+  try {
+    const savedSnap = await getDocs(query(collection(db, 'users', uid, 'savedPosts'), orderBy('savedAt', 'desc'), limit(30)));
+    const postIds = savedSnap.docs.map(d => d.id);
+    if (postIds.length === 0) return { data: [], error: null };
+    const posts = await Promise.all(postIds.map(async pid => {
+      const postSnap = await getDoc(doc(db, 'posts', pid));
+      return postSnap.exists() ? { id: postSnap.id, ...postSnap.data() } : null;
+    }));
+    return { data: posts.filter(Boolean), error: null };
+  } catch (error) {
+    return { data: [], error: error.message };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// CHAT READ RECEIPTS
+// ─────────────────────────────────────────────────────────────
+
+export const markChatRead = async (chatId, uid) => {
+  try {
+    await updateDoc(doc(db, 'chats', chatId), { [`readBy.${uid}`]: true });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// JOB APPLICATIONS (RECRUITER VIEW)
+// ─────────────────────────────────────────────────────────────
+
+export const getJobApplications = async (jobId) => {
+  try {
+    const snap = await getDocs(query(collection(db, 'jobs', jobId, 'applications'), orderBy('appliedAt', 'desc')));
+    return { data: snap.docs.map(d => ({ id: d.id, ...d.data() })), error: null };
+  } catch (error) {
+    return { data: [], error: error.message };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// POST EDITING & COMMENT DELETION
+// ─────────────────────────────────────────────────────────────
+
+export const updatePost = async (postId, content) => {
+  try {
+    await updateDoc(doc(db, 'posts', postId), { content, updatedAt: serverTimestamp() });
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteComment = async (postId, commentId) => {
+  try {
+    await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+    await updateDoc(doc(db, 'posts', postId), { commentsCount: increment(-1) });
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// CONNECTIONS WITH PROFILES (for Messages new chat picker)
+// ─────────────────────────────────────────────────────────────
+
+export const getUserConnectionsWithProfiles = async (uid) => {
+  try {
+    const snap = await getDocs(collection(db, 'users', uid, 'connections'));
+    const ids = snap.docs.map(d => d.id);
+    const profiles = await Promise.all(ids.map(async id => {
+      const { data } = await getUserProfile(id);
+      return data ? { id, ...data } : null;
+    }));
+    return { data: profiles.filter(Boolean), error: null };
+  } catch (error) {
+    return { data: [], error: error.message };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// ADMIN — JOBS MANAGEMENT
+// ─────────────────────────────────────────────────────────────
+
+export const getAllJobs = async () => {
+  try {
+    const snap = await getDocs(query(collection(db, 'jobs'), orderBy('postedAt', 'desc'), limit(100)));
+    return { data: snap.docs.map(d => ({ id: d.id, ...d.data() })), error: null };
+  } catch (error) {
+    return { data: [], error: error.message };
+  }
+};
+
+export const closeJob = async (jobId) => {
+  try {
+    await updateDoc(doc(db, 'jobs', jobId), { status: 'closed' });
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteJob = async (jobId) => {
+  try {
+    await deleteDoc(doc(db, 'jobs', jobId));
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+

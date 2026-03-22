@@ -65,8 +65,8 @@ service cloud.firestore {
       allow read: if isLoggeIn();
       // Require authorId to match uid, initialize likes and comments to 0
       allow create: if isOwner(request.resource.data.authorId) && 
-                       request.resource.data.likes == 0 && 
-                       request.resource.data.comments == 0;
+                       request.resource.data.likesCount == 0 && 
+                       request.resource.data.commentsCount == 0;
       // Only allow updates to content/mediaUrl, OR allow anyone to increment likes (handled securely via functions theoretically, but relaxed for demo)
       allow update: if isOwner(resource.data.authorId) || isLoggeIn(); 
       allow delete: if isOwner(resource.data.authorId);

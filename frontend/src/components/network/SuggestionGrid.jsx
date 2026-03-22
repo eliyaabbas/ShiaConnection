@@ -1,8 +1,8 @@
-import { UserPlus } from 'lucide-react';
+import { UserPlus, UserCheck, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Avatar from '../../components/ui/Avatar';
 
-export default function SuggestionGrid({ loading, suggestions, sentRequests, onConnect }) {
+export default function SuggestionGrid({ loading, suggestions, statusMap, onConnect }) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -31,7 +31,22 @@ export default function SuggestionGrid({ loading, suggestions, sentRequests, onC
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
       {suggestions.map(person => {
         const name = `${person.firstName} ${person.lastName}`;
-        const connected = sentRequests.has(person.id);
+        const status = statusMap?.[person.id] || 'none';
+        
+        let buttonContent, buttonClass;
+        if (status === 'sent') {
+          buttonContent = <><Clock className="w-3.5 h-3.5" /> Pending</>;
+          buttonClass = 'border-slate-200 text-slate-400 bg-slate-50 cursor-default';
+        } else if (status === 'received') {
+          buttonContent = <><UserCheck className="w-3.5 h-3.5" /> Respond</>;
+          buttonClass = 'border-emerald-500 text-emerald-600 bg-emerald-50 hover:bg-emerald-100';
+        } else if (status === 'connected') {
+          buttonContent = <><UserCheck className="w-3.5 h-3.5" /> Connected</>;
+          buttonClass = 'border-slate-200 text-slate-400 bg-slate-50 cursor-default';
+        } else {
+          buttonContent = <><UserPlus className="w-3.5 h-3.5" /> Connect</>;
+          buttonClass = 'border-primary-600 text-primary-600 hover:bg-primary-50';
+        }
         
         return (
           <div key={person.id} className="border border-slate-200 rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow relative group">
@@ -44,20 +59,20 @@ export default function SuggestionGrid({ loading, suggestions, sentRequests, onC
                 {name}
               </Link>
               <p className="text-xs text-slate-500 mb-3 line-clamp-1">{person.role}</p>
-              <div className="mt-auto w-full">
+              {status === 'received' ? (
+                // They sent you a request — link to Network page to accept it from Invitations
+                <Link to="/network" className={`w-full py-1.5 flex justify-center items-center gap-1.5 font-bold border-2 rounded-full text-sm transition-colors ${buttonClass}`}>
+                  {buttonContent}
+                </Link>
+              ) : (
                 <button
-                  onClick={() => !connected && onConnect(person.id)}
-                  disabled={connected}
-                  className={`w-full py-1.5 flex justify-center items-center gap-1.5 font-bold border-2 rounded-full text-sm transition-colors ${
-                    connected
-                      ? 'border-slate-200 text-slate-400 cursor-default'
-                      : 'border-primary-600 text-primary-600 hover:bg-primary-50'
-                  }`}
+                  onClick={() => status === 'none' && onConnect(person.id)}
+                  disabled={status !== 'none'}
+                  className={`w-full py-1.5 flex justify-center items-center gap-1.5 font-bold border-2 rounded-full text-sm transition-colors ${buttonClass}`}
                 >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  {connected ? 'Sent' : 'Connect'}
+                  {buttonContent}
                 </button>
-              </div>
+              )}
             </div>
           </div>
         );

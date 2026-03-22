@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/ui/Avatar';
 import { subscribeNotifications, markNotificationRead, markAllNotificationsRead, getUserProfile } from '../services/db';
 import { formatDistanceToNow } from '../utils/time';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const NOTIF_ICONS = {
   connection_request: <UserPlus className="w-4 h-4 text-primary-600" />,
@@ -17,6 +17,7 @@ const NOTIF_ICONS = {
 
 export default function Notifications() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,15 @@ export default function Notifications() {
 
   const handleRead = async (notif) => {
     if (!notif.read) await markNotificationRead(currentUser.uid, notif.id);
+    // Navigate to relevant content
+    if (notif.type === 'connection_request' || notif.type === 'connection_accepted') {
+      navigate(`/profile/${notif.senderId}`);
+    } else if (notif.type === 'post_like' || notif.type === 'post_comment') {
+      // Navigate to feed (post scroll not implemented, but feed is the right page)
+      navigate('/');
+    } else if (notif.senderId) {
+      navigate(`/profile/${notif.senderId}`);
+    }
   };
 
   const handleMarkAll = async () => {

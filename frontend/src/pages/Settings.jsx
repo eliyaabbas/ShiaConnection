@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Lock, Shield, ChevronRight } from 'lucide-react';
+import { User, Lock, Shield, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { logoutUser } from '../services/auth';
@@ -14,6 +14,7 @@ import ChangePassword from '../components/settings/ChangePassword';
 import RequestRoleChange from '../components/settings/RequestRoleChange';
 
 const requestRoleChangeFn = httpsCallable(functions, 'requestRoleChange');
+const deleteAccountFn = httpsCallable(functions, 'deleteAccount');
 
 export default function Settings() {
   const { currentUser, userProfile, refreshProfile } = useAuth();
@@ -21,6 +22,8 @@ export default function Settings() {
   const navigate = useNavigate();
 
   const [activeSection, setActiveSection] = useState('account');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteConfirmPw, setDeleteConfirmPw] = useState('');
 
   // Password change
   const [pwForm, setPwForm] = useState({ currentPw: '', newPw: '', confirmPw: '' });
@@ -80,10 +83,28 @@ export default function Settings() {
     navigate('/auth');
   };
 
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    if (!deleteConfirmPw) { toast.error('Please enter your password to confirm'); return; }
+    if (!window.confirm('This will permanently delete your account and all your data. This cannot be undone. Are you absolutely sure?')) return;
+    setDeletingAccount(true);
+    try {
+      const credential = EmailAuthProvider.credential(currentUser.email, deleteConfirmPw);
+      await reauthenticateWithCredential(currentUser, credential);
+      await deleteAccountFn();
+      await logoutUser();
+      navigate('/auth');
+    } catch (err) {
+      toast.error(err.code === 'auth/wrong-password' ? 'Incorrect password' : err.message);
+      setDeletingAccount(false);
+    }
+  };
+
   const navItems = [
     { id: 'account', label: 'Account Info', icon: User },
     { id: 'password', label: 'Change Password', icon: Lock },
     { id: 'role', label: 'Request Role Change', icon: Shield },
+    { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
   ];
 
   return (
@@ -141,6 +162,32 @@ export default function Settings() {
             requestingRole={requestingRole}
             handleRoleRequest={handleRoleRequest}
           />
+        )}
+
+        {activeSection === 'danger' && (
+          <div className="bg-white rounded-xl shadow-sm border border-red-200 p-5">
+            <h3 className="font-bold text-red-700 text-base mb-1 flex items-center gap-2"><AlertTriangle className="w-5 h-5" /> Danger Zone</h3>
+            <p className="text-sm text-slate-600 mb-5">Permanently delete your account and all associated data. This action <strong>cannot be undone</strong>.</p>
+            <form onSubmit={handleDeleteAccount} className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Confirm with your password</label>
+                <input
+                  type="password"
+                  placeholder="Enter your current password"
+                  value={deleteConfirmPw}
+                  onChange={e => setDeleteConfirmPw(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={deletingAccount}
+                className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-sm transition-colors disabled:opacity-60"
+              >
+                {deletingAccount ? 'Deleting account...' : 'Delete My Account'}
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </div>
