@@ -90,8 +90,9 @@ service cloud.firestore {
 
     // Conversations / Chats
     match /chats/{chatId} {
-      // Allowed if their ID is in the participants array
-      allow read, update: if isLoggeIn() && request.auth.uid in resource.data.participants;
+      // Allowed if their ID is in the participants array (or if checking existence of a new chat)
+      allow read: if isLoggeIn() && (resource == null || request.auth.uid in resource.data.participants);
+      allow update: if isLoggeIn() && request.auth.uid in resource.data.participants;
       allow create: if isLoggeIn() && request.auth.uid in request.resource.data.participants;
       
       match /messages/{messageId} {
