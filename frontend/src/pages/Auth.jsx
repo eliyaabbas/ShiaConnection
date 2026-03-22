@@ -178,19 +178,7 @@ export default function Auth() {
                     {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing In...</> : 'Sign In'}
                   </button>
 
-                  {/* Social login divider */}
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
-                    <div className="relative flex justify-center"><span className="px-4 bg-white text-slate-400 text-sm">OR</span></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button type="button" className="flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-sm">
-                      <span className="text-red-500 font-bold">G</span> Google
-                    </button>
-                    <button type="button" className="flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-sm">
-                      <span className="text-blue-600 font-bold">in</span> LinkedIn
-                    </button>
-                  </div>
+                  {/* Social login can be added here in the future */}
                 </>
               ) : (
                 /* ─────────── CREATE ACCOUNT ─────────── */

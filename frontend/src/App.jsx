@@ -12,6 +12,7 @@ import Messages from './pages/Messages';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import Saved from './pages/Saved';
+import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { ToastContainer } from './components/ui/Toast';
@@ -64,6 +65,9 @@ function App() {
         }>
            <Route index element={<Admin />} />
         </Route>
+
+        {/* 404 Catch-all */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

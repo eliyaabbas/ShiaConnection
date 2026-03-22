@@ -50,6 +50,11 @@ service cloud.firestore {
         allow read: if isLoggeIn();
         allow write: if isOwner(userId);
       }
+
+      // Saved Posts subcollection — only the owner can read/write their bookmarks
+      match /savedPosts/{postId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
 

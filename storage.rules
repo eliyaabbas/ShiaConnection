@@ -53,6 +53,13 @@ service firebase.storage {
       allow read: if isOwner(userId);
       allow write: if isOwner(userId) && isPDF() && sizeLt(10);
     }
+
+    // ── Chat Media ───────────────────────────────────────────
+    // READ: signed-in users (message access controlled by Firestore)
+    // WRITE: signed-in users, images ≤ 10MB
+    match /chats/{chatId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isImage() && sizeLt(10);
+    }
   }
 }
-

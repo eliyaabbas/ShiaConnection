@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { logoutUser } from '../../services/auth';
 
 export default function ProtectedRoute({ requireOnboarding = true, requireAdmin = false, children }) {
   const { currentUser, userProfile, loading, refreshProfile } = useAuth();
@@ -48,6 +49,26 @@ export default function ProtectedRoute({ requireOnboarding = true, requireAdmin 
 
   const isCurrentlyOnboarding = window.location.pathname === '/onboarding';
   
+  // Suspended user guard
+  if (userProfile && userProfile.profileStatus === 'suspended') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md text-center bg-white p-8 rounded-2xl shadow-xl border border-red-100">
+          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">🚫</span>
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 mb-2">Account Suspended</h1>
+          <p className="text-slate-500 text-sm mb-6">
+            Your account has been temporarily suspended by an administrator. Please contact support for more information.
+          </p>
+          <button onClick={() => logoutUser()} className="px-5 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition">
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (requireOnboarding && !isCurrentlyOnboarding && (!userProfile || userProfile.profileStatus === 'pending')) {
     return <Navigate to="/onboarding" replace />;
   }

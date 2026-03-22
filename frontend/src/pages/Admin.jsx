@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Users, Shield, Flag, Activity, CheckCircle, XCircle, MoreVertical, Loader2, Search, UserX, UserCheck, UserPlus, Key } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Avatar from '../components/ui/Avatar';
 import { useToast } from '../components/ui/Toast';
 import { getRoleChangeRequests, rejectRoleChange, getAllUsers, suspendUser, activateUser, getFlaggedContent, getAdminUsers } from '../services/db';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../services/firebase';
+
+const deleteContentFn = httpsCallable(functions, 'deleteContent');
 
 const approveRoleChangeFn = httpsCallable(functions, 'approveRoleChange');
 const makeAdminFn = httpsCallable(functions, 'makeAdmin');
@@ -327,8 +329,22 @@ export default function Admin() {
                       <p className="text-sm text-slate-700 line-clamp-2">{post.content}</p>
                       <p className="text-xs text-slate-400 mt-1">Post ID: {post.id}</p>
                     </div>
-                    <button className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 flex-shrink-0">
-                      Remove
+                    <button
+                      disabled={processingId === post.id + '_remove'}
+                      onClick={async () => {
+                        if (!window.confirm('Permanently remove this flagged post?')) return;
+                        setProcessingId(post.id + '_remove');
+                        try {
+                          await deleteContentFn({ collectionPath: 'posts', docId: post.id, reason: post.flagReason || 'Flagged content removed by admin' });
+                          toast.success('Post removed successfully');
+                        } catch (err) {
+                          toast.error('Failed to remove: ' + err.message);
+                        }
+                        setProcessingId(null);
+                      }}
+                      className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 flex-shrink-0 disabled:opacity-50"
+                    >
+                      {processingId === post.id + '_remove' ? 'Removing...' : 'Remove'}
                     </button>
                   </div>
                 ))}
