@@ -25,9 +25,14 @@ export default function PostCard({ post, currentUser }) {
   const [editText, setEditText] = useState(post.content || '');
   const [savingEdit, setSavingEdit] = useState(false);
   const [content, setContent] = useState(post.content || '');
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(!post.mediaUrl || post.mediaType === 'video');
 
   useEffect(() => {
-    getUserProfile(post.authorId).then(({ data }) => { if (data) setAuthorProfile(data); });
+    getUserProfile(post.authorId).then(({ data }) => { 
+      if (data) setAuthorProfile(data); 
+      setLoadingProfile(false);
+    });
     hasUserLikedPost(post.id, currentUser.uid).then(setLiked);
     isPostSaved(currentUser.uid, post.id).then(setSaved);
   }, [post.id, post.authorId, currentUser.uid]);
@@ -107,8 +112,29 @@ export default function PostCard({ post, currentUser }) {
     ? formatDistanceToNow(post.createdAt.seconds * 1000)
     : 'Just now';
 
+  if (loadingProfile) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 animate-pulse mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-slate-200" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 bg-slate-200 rounded w-32" />
+            <div className="h-2 bg-slate-200 rounded w-20" />
+          </div>
+        </div>
+        <div className="space-y-1.5 mt-2">
+          <div className="h-3 bg-slate-200 rounded w-full" />
+          <div className="h-3 bg-slate-200 rounded w-5/6" />
+        </div>
+        {post.mediaUrl && (
+          <div className="h-64 bg-slate-200 rounded-xl w-full mt-3"></div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="glass-card fade-in-up hover-lift transition-all duration-300">
+    <div className="glass-card fade-in-up hover-lift transition-all duration-300 mb-4">
       {/* Header */}
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -160,11 +186,19 @@ export default function PostCard({ post, currentUser }) {
           <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{content}</p>
         )}
         {post.mediaUrl && !editing && (
-          <div className="mt-3">
+          <div className="mt-3 relative">
             {post.mediaType === 'video' ? (
               <video src={post.mediaUrl} controls className="w-full max-h-[500px] object-contain bg-slate-900 rounded-xl" />
             ) : (
-              <img src={post.mediaUrl} alt="Post attachment" className="w-full max-h-[500px] object-cover rounded-xl border border-slate-100" />
+              <>
+                {!imageLoaded && <div className="w-full h-64 bg-slate-200 animate-pulse rounded-xl border border-slate-100"></div>}
+                <img 
+                  src={post.mediaUrl} 
+                  alt="Post attachment" 
+                  onLoad={() => setImageLoaded(true)}
+                  className={`w-full max-h-[500px] object-cover rounded-xl border border-slate-100 ${imageLoaded ? 'block' : 'hidden'}`} 
+                />
+              </>
             )}
           </div>
         )}
