@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share2, Trash2, Send, Bookmark, PenSquare, Check, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Trash2, Send, Bookmark, PenSquare, Check, X, Repeat } from 'lucide-react';
 import { formatDistanceToNow } from '../../utils/time';
 import Avatar from '../ui/Avatar';
 import { useToast } from '../ui/Toast';
@@ -7,7 +7,8 @@ import { Link } from 'react-router-dom';
 import { 
   getUserProfile, hasUserLikedPost, likePost, 
   getPostComments, addComment, deletePost, deleteComment,
-  savePost, unsavePost, isPostSaved, updatePost
+  savePost, unsavePost, isPostSaved, updatePost,
+  hasUserResharedPost, resharePost
 } from '../../services/db';
 
 export default function PostCard({ post, currentUser }) {
@@ -15,6 +16,10 @@ export default function PostCard({ post, currentUser }) {
   const [authorProfile, setAuthorProfile] = useState(null);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
+  const [reshared, setReshared] = useState(false);
+  const [resharesCount, setResharesCount] = useState(post.resharesCount || 0);
+  const [isResharing, setIsResharing] = useState(false);
+  const [originalAuthorProfile, setOriginalAuthorProfile] = useState(null);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
@@ -35,7 +40,16 @@ export default function PostCard({ post, currentUser }) {
     });
     hasUserLikedPost(post.id, currentUser.uid).then(setLiked);
     isPostSaved(currentUser.uid, post.id).then(setSaved);
-  }, [post.id, post.authorId, currentUser.uid]);
+    
+    const targetPostId = post.isReshare ? post.originalPostId : post.id;
+    hasUserResharedPost(targetPostId, currentUser.uid).then(setReshared);
+    
+    if (post.isReshare && post.originalAuthorId) {
+      getUserProfile(post.originalAuthorId).then(({ data }) => {
+        if (data) setOriginalAuthorProfile(data);
+      });
+    }
+  }, [post.id, post.authorId, currentUser.uid, post.isReshare, post.originalPostId, post.originalAuthorId]);
 
   useEffect(() => {
     if (showComments && !commentsSubRef.current) {
@@ -71,6 +85,24 @@ export default function PostCard({ post, currentUser }) {
     } catch {
       toast.error('Could not copy link');
     }
+  };
+
+  const handleReshare = async () => {
+    if (reshared) {
+      toast.error('You have already reshared this post');
+      return;
+    }
+    if (!window.confirm('Reshare this post to your feed?')) return;
+    setIsResharing(true);
+    const { success, error } = await resharePost(post, currentUser.uid);
+    if (success) {
+      setReshared(true);
+      setResharesCount(c => c + 1);
+      toast.success('Post reshared successfully');
+    } else {
+      toast.error(error || 'Failed to reshare post');
+    }
+    setIsResharing(false);
   };
 
   const handleEdit = async () => {
@@ -134,9 +166,15 @@ export default function PostCard({ post, currentUser }) {
   }
 
   return (
-    <div className="glass-card fade-in-up hover-lift transition-all duration-300 mb-4">
+    <div className="glass-card fade-in-up hover-lift transition-all duration-300 mb-4 relative">
       {/* Header */}
-      <div className="p-4 flex items-center justify-between">
+      {post.isReshare && (
+        <div className="px-4 pt-3 pb-0 flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+          <Repeat className="w-3.5 h-3.5" />
+          <span>Reshared from {originalAuthorProfile ? `${originalAuthorProfile.firstName} ${originalAuthorProfile.lastName}` : 'Original User'}</span>
+        </div>
+      )}
+      <div className={`px-4 pb-4 flex items-center justify-between ${post.isReshare ? 'pt-2' : 'pt-4'}`}>
         <div className="flex items-center gap-3">
           <Link to={`/profile/${post.authorId}`}>
             <Avatar src={authorProfile?.avatarUrl} name={authorName} size="md" className="hover:opacity-90 transition-opacity" />
@@ -205,14 +243,22 @@ export default function PostCard({ post, currentUser }) {
       </div>
 
       {/* Counts */}
-      {(likesCount > 0 || post.commentsCount > 0) && (
+      {(likesCount > 0 || post.commentsCount > 0 || resharesCount > 0) && (
         <div className="px-4 pb-2 flex items-center justify-between text-xs text-slate-500 font-medium">
-          {likesCount > 0 && (
-            <div className="flex items-center gap-1">
-              <span className="bg-primary-100 text-primary-600 rounded-full w-4 h-4 flex items-center justify-center text-[10px]">👍</span>
-              <span>{likesCount}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {likesCount > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="bg-primary-100 text-primary-600 rounded-full w-4 h-4 flex items-center justify-center text-[10px]">👍</span>
+                <span>{likesCount}</span>
+              </div>
+            )}
+            {resharesCount > 0 && (
+              <div className="flex items-center gap-1">
+                <Repeat className="w-3.5 h-3.5" />
+                <span>{resharesCount}</span>
+              </div>
+            )}
+          </div>
           {post.commentsCount > 0 && (
             <button onClick={() => setShowComments(s => !s)} className="ml-auto hover:underline">
               {post.commentsCount} comment{post.commentsCount !== 1 ? 's' : ''}
@@ -225,6 +271,7 @@ export default function PostCard({ post, currentUser }) {
       <div className="px-2 py-1.5 border-t border-slate-100 flex justify-between text-sm text-slate-500 font-semibold">
         <FeedAction icon={<Heart className={`w-4 h-4 ${liked ? 'fill-primary-600 text-primary-600' : ''}`} />} label="Like" active={liked} onClick={handleLike} />
         <FeedAction icon={<MessageCircle className="w-4 h-4" />} label="Comment" onClick={() => setShowComments(s => !s)} />
+        <FeedAction icon={<Repeat className={`w-4 h-4 ${reshared ? 'text-green-600' : ''}`} />} label="Reshare" active={reshared} onClick={handleReshare} />
         <FeedAction icon={<Share2 className="w-4 h-4" />} label="Share" onClick={handleShare} />
         <FeedAction icon={<Bookmark className={`w-4 h-4 ${saved ? 'fill-primary-600 text-primary-600' : ''}`} />} label="Save" active={saved} onClick={handleSave} />
       </div>

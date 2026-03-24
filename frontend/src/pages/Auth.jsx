@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, registerUser } from '../services/auth';
+import { loginUser, registerUser, signInWithGoogle } from '../services/auth';
 import { db, auth } from '../services/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { Eye, EyeOff, X, Mail, CheckCircle, Loader2 } from 'lucide-react';
 
@@ -10,6 +10,7 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const navigate = useNavigate();
@@ -22,8 +23,7 @@ export default function Auth() {
   const [forgotError, setForgotError] = useState('');
 
   const [formData, setFormData] = useState({
-    firstName: '', lastName: '', email: '', phone: '', gender: '',
-    password: '', confirmPassword: ''
+    name: '', email: '', password: '', confirmPassword: ''
   });
 
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -45,7 +45,7 @@ export default function Auth() {
         setError('Password must be at least 6 characters.'); setLoading(false); return;
       }
 
-      const displayName = `${formData.firstName} ${formData.lastName}`.trim();
+      const displayName = formData.name.trim();
       const { user, error: regError } = await registerUser(formData.email, formData.password, displayName);
 
       if (regError) {
@@ -53,12 +53,12 @@ export default function Auth() {
       } else if (user) {
         try {
           await setDoc(doc(db, 'users', user.uid), {
-            firstName: formData.firstName.trim(),
-            lastName: formData.lastName.trim(),
+            firstName: formData.name.trim(),
+            lastName: '',
             email: formData.email.trim(),
-            phone: formData.phone,
-            gender: formData.gender,
-            role: '',              // set during onboarding
+            phone: '',
+            gender: '',
+            role: '',
             profileStatus: 'pending',
             createdAt: serverTimestamp(),
           });
@@ -69,6 +69,47 @@ export default function Auth() {
       }
     }
     setLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const { user, isNewUser, error: googleError } = await signInWithGoogle();
+      if (googleError) {
+        setError(googleError);
+        setGoogleLoading(false);
+        return;
+      }
+      if (user) {
+        if (isNewUser) {
+          // Create Firestore profile for brand-new Google user
+          await setDoc(doc(db, 'users', user.uid), {
+            firstName: user.displayName?.split(' ')[0] || '',
+            lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+            email: user.email || '',
+            phone: '',
+            gender: '',
+            role: '',
+            profileStatus: 'pending',
+            avatarUrl: user.photoURL || '',
+            createdAt: serverTimestamp(),
+          });
+          navigate('/onboarding');
+        } else {
+          // Existing user — check if they completed onboarding
+          const docSnap = await getDoc(doc(db, 'users', user.uid));
+          if (docSnap.exists() && docSnap.data().profileStatus === 'completed') {
+            navigate('/');
+          } else {
+            navigate('/onboarding');
+          }
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed.');
+    }
+    setGoogleLoading(false);
   };
 
   const handleForgotPassword = async (e) => {
@@ -91,8 +132,7 @@ export default function Auth() {
   const switchMode = () => {
     setIsLogin(m => !m);
     setError('');
-    setFormData({ firstName: '', lastName: '', email: '', phone: '', gender: '',
-                  password: '', confirmPassword: '', role: 'Professional' });
+    setFormData({ name: '', email: '', password: '', confirmPassword: '' });
   };
 
   const iClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all text-slate-700 placeholder-slate-400";
@@ -142,6 +182,35 @@ export default function Auth() {
               </div>
             )}
 
+            {/* ─── Google Sign-In Button ─── */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading || loading}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border-2 border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-60 shadow-sm mb-5"
+            >
+              {googleLoading ? (
+                <><Loader2 className="w-5 h-5 animate-spin" /> Signing in...</>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Continue with Google
+                </>
+              )}
+            </button>
+
+            {/* ─── Divider ─── */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 h-px bg-slate-200"></div>
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">or</span>
+              <div className="flex-1 h-px bg-slate-200"></div>
+            </div>
+
             <form className="space-y-4" onSubmit={handleSubmit}>
               {isLogin ? (
                 /* ─────────── SIGN IN ─────────── */
@@ -177,43 +246,19 @@ export default function Auth() {
                     className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-sm transition-colors mt-2 disabled:opacity-70 flex items-center justify-center gap-2">
                     {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing In...</> : 'Sign In'}
                   </button>
-
-                  {/* Social login can be added here in the future */}
                 </>
               ) : (
                 /* ─────────── CREATE ACCOUNT ─────────── */
                 <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={lClass}>First Name</label>
-                      <input type="text" name="firstName" value={formData.firstName} onChange={handleChange}
-                        placeholder="Ali" required className={iClass} />
-                    </div>
-                    <div>
-                      <label className={lClass}>Last Name</label>
-                      <input type="text" name="lastName" value={formData.lastName} onChange={handleChange}
-                        placeholder="Hussain" required className={iClass} />
-                    </div>
+                  <div>
+                    <label className={lClass}>Name</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange}
+                      placeholder="Your full name" required className={iClass} />
                   </div>
                   <div>
                     <label className={lClass}>Email Address</label>
                     <input type="email" name="email" value={formData.email} onChange={handleChange}
                       placeholder="you@example.com" required className={iClass} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={lClass}>Phone <span className="text-slate-400 font-normal">(optional)</span></label>
-                      <input type="tel" name="phone" value={formData.phone} onChange={handleChange}
-                        placeholder="+91 9876543210" className={iClass} />
-                    </div>
-                    <div>
-                      <label className={lClass}>Gender <span className="text-slate-400 font-normal">(optional)</span></label>
-                      <select name="gender" value={formData.gender} onChange={handleChange} className={`${iClass} cursor-pointer`}>
-                        <option value="">Prefer not to say</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                      </select>
-                    </div>
                   </div>
                   <div>
                     <label className={lClass}>Password</label>

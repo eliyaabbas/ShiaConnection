@@ -16,7 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = getFirestore(app, 'shiaconnectiondb');
 const storage = getStorage(app);
 const functions = getFunctions(app);
 

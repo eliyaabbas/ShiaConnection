@@ -45,6 +45,11 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Optional personal info fields (collected during onboarding)
+  const [lastName, setLastName] = useState('');
+  const [gender, setGender] = useState('');
+  const [phone, setPhone] = useState('');
+
   // Profile enrichment fields
   const [headline, setHeadline] = useState('');
   const [about, setAbout] = useState('');
@@ -54,11 +59,17 @@ export default function Onboarding() {
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // Redirect if already done
+  // Redirect if already done & pre-populate optional fields
   useEffect(() => {
     if (!currentUser) { navigate('/auth', { replace: true }); return; }
     if (userProfile?.profileStatus === 'completed') { navigate('/', { replace: true }); return; }
     if (userProfile?.role && !selectedRole) setSelectedRole(userProfile.role);
+    // Pre-populate optional personal info from existing profile
+    if (userProfile) {
+      if (userProfile.lastName && !lastName) setLastName(userProfile.lastName);
+      if (userProfile.gender && !gender) setGender(userProfile.gender);
+      if (userProfile.phone && !phone) setPhone(userProfile.phone);
+    }
   }, [currentUser, userProfile, navigate]);
 
   // Ensure Firestore doc exists for brand-new users
@@ -114,6 +125,9 @@ export default function Onboarding() {
       // Use setDoc+merge so it works even if doc doesn't fully exist yet
       await setDoc(doc(db, 'users', currentUser.uid), {
         ...formData,
+        lastName: lastName.trim(),
+        gender,
+        phone: phone.trim(),
         role: selectedRole,
         updatedAt: new Date(),
       }, { merge: true });
@@ -351,9 +365,48 @@ export default function Onboarding() {
 
               {error && <div className="mb-5 bg-red-50 text-red-600 p-4 rounded-xl text-sm font-medium border border-red-100">{error}</div>}
 
-              <form onSubmit={handleDetailsSubmit} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 space-y-5">
-                {renderDetailFields()}
-                <div className="pt-4 border-t border-slate-100 flex gap-3">
+              <form onSubmit={handleDetailsSubmit} className="space-y-5">
+
+                {/* ─── Optional Personal Info ─── */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 space-y-4">
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Complete Your Profile <span className="text-slate-400 font-normal normal-case">(optional)</span></h3>
+                    <p className="text-xs text-slate-500 mt-1">Help others know you better. You can skip these and fill later.</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>
+                        <span className="mr-1.5">👤</span>Last Name
+                      </label>
+                      <input type="text" value={lastName} onChange={e => setLastName(e.target.value)}
+                        placeholder="e.g. Hussain" className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>
+                        <span className="mr-1.5">📱</span>Phone Number
+                      </label>
+                      <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                        placeholder="+91 9876543210" className={inputClass} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>
+                      <span className="mr-1.5">⚧</span>Gender
+                    </label>
+                    <select value={gender} onChange={e => setGender(e.target.value)} className={`${inputClass} cursor-pointer`}>
+                      <option value="">Prefer not to say</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* ─── Role-specific Fields ─── */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 space-y-5">
+                  {renderDetailFields()}
+                </div>
+
+                <div className="flex gap-3">
                   <button type="button" onClick={prevStep} className="flex items-center gap-2 px-5 py-3 border-2 border-slate-200 text-slate-600 font-bold rounded-full hover:bg-slate-50 transition-colors">
                     <ChevronLeft className="w-4 h-4" /> Back
                   </button>

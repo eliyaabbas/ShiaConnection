@@ -125,9 +125,49 @@ export const createPost = async (uid, content, mediaUrl = null, mediaType = null
       mediaType,
       likesCount: 0,
       commentsCount: 0,
+      resharesCount: 0,
       createdAt: serverTimestamp(),
     };
     const docRef = await addDoc(collection(db, 'posts'), newPost);
+    return { success: true, id: docRef.id, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const hasUserResharedPost = async (postId, userId) => {
+  try {
+    const snap = await getDoc(doc(db, 'posts', postId, 'reshares', userId));
+    return snap.exists();
+  } catch { return false; }
+};
+
+export const resharePost = async (post, uid) => {
+  try {
+    const targetPostId = post.isReshare ? post.originalPostId : post.id;
+    const reshareRef = doc(db, 'posts', targetPostId, 'reshares', uid);
+    const existing = await getDoc(reshareRef);
+    if (existing.exists()) return { success: false, error: 'Already reshared' };
+
+    const newPost = {
+      authorId: uid,
+      content: post.content,
+      mediaUrl: post.mediaUrl || null,
+      mediaType: post.mediaType || null,
+      isReshare: true,
+      originalPostId: targetPostId,
+      originalAuthorId: post.isReshare ? post.originalAuthorId : post.authorId,
+      likesCount: 0,
+      commentsCount: 0,
+      resharesCount: 0,
+      createdAt: serverTimestamp(),
+    };
+    
+    const docRef = await addDoc(collection(db, 'posts'), newPost);
+    
+    await setDoc(reshareRef, { resharedAt: serverTimestamp(), newPostId: docRef.id });
+    await updateDoc(doc(db, 'posts', targetPostId), { resharesCount: increment(1) });
+    
     return { success: true, id: docRef.id, error: null };
   } catch (error) {
     return { success: false, error: error.message };

@@ -3,9 +3,14 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
+  getAdditionalUserInfo,
 } from 'firebase/auth';
 import { auth } from './firebase';
+
+const googleProvider = new GoogleAuthProvider();
 
 export const registerUser = async (email, password, displayName) => {
   try {
@@ -16,6 +21,16 @@ export const registerUser = async (email, password, displayName) => {
     return { user: userCredential.user, error: null };
   } catch (error) {
     return { user: null, error: error.message };
+  }
+};
+
+export const signInWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const isNewUser = getAdditionalUserInfo(result)?.isNewUser ?? false;
+    return { user: result.user, isNewUser, error: null };
+  } catch (error) {
+    return { user: null, isNewUser: false, error: error.message };
   }
 };
 
