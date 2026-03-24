@@ -8,35 +8,7 @@ export default function FeedSidebar({ suggestedConnections }) {
 
   return (
     <div className="hidden lg:flex flex-col gap-4">
-      {/* Profile Card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* Cover */}
-        <div
-          className="h-16 bg-gradient-to-br from-primary-500 to-primary-800 bg-cover bg-center"
-          style={userProfile?.coverUrl ? { backgroundImage: `url(${userProfile.coverUrl})` } : {}}
-        />
-        <div className="px-4 pb-4 -mt-8">
-          <Link to={`/profile/${currentUser?.uid}`}>
-            <Avatar src={userProfile?.avatarUrl} name={fullName} className="w-14 h-14 border-2 border-white shadow-sm" />
-          </Link>
-          <Link to={`/profile/${currentUser?.uid}`} className="block mt-2">
-            <p className="font-bold text-slate-900 text-sm hover:text-primary-600 transition-colors">{fullName}</p>
-          </Link>
-          {userProfile?.headline && (
-            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{userProfile.headline}</p>
-          )}
-          <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-1.5">
-            <Link to="/network" className="flex justify-between items-center text-xs text-slate-600 hover:text-primary-600 transition-colors">
-              <span>Connections</span>
-              <span className="font-bold text-slate-800">{userProfile?.connectionsCount || 0}</span>
-            </Link>
-            <Link to="/profile/me" className="flex justify-between items-center text-xs text-slate-600 hover:text-primary-600 transition-colors">
-              <span>Profile views</span>
-              <span className="font-bold text-slate-800">{userProfile?.profileViews || 0}</span>
-            </Link>
-          </div>
-        </div>
-      </div>
+
 
       {/* Suggested Connections */}
       {suggestedConnections && suggestedConnections.length > 0 && (

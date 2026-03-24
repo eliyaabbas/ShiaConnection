@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Camera, Loader2, MessageSquare, UserPlus, UserCheck, UserMinus, Building2, GraduationCap, PenSquare, Check, X, MapPin } from 'lucide-react';
+import { Camera, Loader2, MessageSquare, UserPlus, UserCheck, UserMinus, Building2, GraduationCap, PenSquare, Check, X, MapPin, FileDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Avatar from '../ui/Avatar';
 
@@ -65,6 +65,12 @@ export default function ProfileHero({
 
         {/* Action buttons */}
         <div className="flex justify-end pt-4 gap-2 h-14">
+          {profile.resumeUrl && (
+            <a href={profile.resumeUrl} target="_blank" rel="noopener noreferrer" 
+               className="px-5 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-sm font-bold hover:bg-indigo-100 transition-all hover:-translate-y-0.5 shadow-sm flex items-center gap-1.5">
+              <FileDown className="w-4 h-4" /> Resume
+            </a>
+          )}
           {!isOwnProfile && (
             <>
               <Link to={`/messages?newChat=${profile.id}`} className="px-5 py-1.5 border-2 border-primary-600 text-primary-700 rounded-full text-sm font-bold hover:bg-primary-50 transition-all hover:-translate-y-0.5 hover:shadow-sm flex items-center gap-1.5">
@@ -130,11 +136,17 @@ export default function ProfileHero({
           
           {/* Role Specific Details Inline Preview */}
           <div className="mt-4 text-sm text-slate-600 flex gap-4">
-             {profile.role === 'Professional' && profile.roleDetails?.company && (
-               <div className="flex items-center gap-1"><Building2 className="w-4 h-4"/> {profile.roleDetails.jobTitle} at {profile.roleDetails.company}</div>
+             {profile.role === 'Professional' && profile.company && (
+               <div className="flex items-center gap-1"><Building2 className="w-4 h-4"/> {profile.jobTitle} at {profile.company}</div>
              )}
-             {profile.role === 'Scholar' && profile.roleDetails?.institution && (
-               <div className="flex items-center gap-1"><GraduationCap className="w-4 h-4"/> {profile.roleDetails.title} at {profile.roleDetails.institution}</div>
+             {profile.role === 'Student' && profile.university && (
+               <div className="flex items-center gap-1"><GraduationCap className="w-4 h-4"/> {profile.degree} at {profile.university}</div>
+             )}
+             {profile.role === 'Recruiter' && profile.company && (
+               <div className="flex items-center gap-1"><Building2 className="w-4 h-4"/> {profile.jobTitle} at {profile.company}</div>
+             )}
+             {profile.role === 'Skilled Worker' && profile.trade && (
+               <div className="flex items-center gap-1"><Building2 className="w-4 h-4"/> {profile.trade}</div>
              )}
           </div>
         </div>

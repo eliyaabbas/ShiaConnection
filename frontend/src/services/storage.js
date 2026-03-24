@@ -76,8 +76,9 @@ export const uploadPostMedia = (uid, postId, file, onProgress) => {
 export const uploadResume = (uid, file, onProgress) => {
   return new Promise((resolve) => {
     try {
-      const storageRef = ref(storage, `resumes/${uid}/resume.pdf`);
-      const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'application/pdf' });
+      const ext = file.name.split('.').pop() || 'docx';
+      const storageRef = ref(storage, `resumes/${uid}/resume.${ext}`);
+      const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       uploadTask.on(
         'state_changed',
         (snapshot) => {

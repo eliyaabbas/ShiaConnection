@@ -383,7 +383,12 @@ export const getSuggestedUsers = async (currentUid, connectedIds = [], limitCoun
     const snap = await getDocs(query(collection(db, 'users'), limit(50)));
     const all = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
-      .filter(u => u.id !== currentUid && !connectedIds.includes(u.id));
+      .filter(u => 
+        u.id !== currentUid && 
+        u.uid !== currentUid && 
+        u.profileStatus === 'completed' &&
+        !connectedIds.includes(u.id)
+      );
     return { data: all.slice(0, limitCount), error: null };
   } catch (error) {
     return { data: [], error: error.message };

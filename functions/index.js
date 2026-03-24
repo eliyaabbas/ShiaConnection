@@ -513,3 +513,87 @@ exports.deleteAccount = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', err.message);
   }
 });
+
+// 15. Parse ATS Resume (Backend)
+exports.parseResume = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in to parse resume.');
+  }
+
+  const { fileData, fileType } = data;
+  if (!fileData || !fileType) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing fileData or fileType.');
+  }
+
+  try {
+    const buffer = Buffer.from(fileData, 'base64');
+    let text = '';
+
+    if (fileType !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && !fileType.includes('docx') && !fileType.includes('word')) {
+      throw new functions.https.HttpsError('invalid-argument', 'Unsupported file type. Please upload a .docx file.');
+    }
+
+    const mammoth = require('mammoth');
+    const result = await mammoth.extractRawText({ buffer: buffer });
+    text = result.value;
+
+    // --- Regex Logic ---
+    const parsedData = {
+      firstName: '', lastName: '', email: '', phone: '',
+      linkedIn: '', jobTitle: '', university: '', company: '', skills: []
+    };
+
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i;
+    const emailMatch = text.match(emailRegex);
+    if (emailMatch) parsedData.email = emailMatch[1].trim();
+
+    const phoneRegex = /(?:(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9])\s*\)|([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9]))\s*(?:[.-]\s*)?)?([2-9]1[02-9]|[2-9][02-9]1|[2-9][02-9]{2})\s*(?:[.-]\s*)?([0-9]{4})(?:\s*(?:#|x\.?|ext\.?|extension)\s*(\d+))?/i;
+    const simplePhoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/;
+    const phoneMatch = text.match(phoneRegex) || text.match(simplePhoneRegex);
+    if (phoneMatch) parsedData.phone = phoneMatch[0].trim();
+
+    const linkedInRegex = /(linkedin\.com\/in\/[a-zA-Z0-9_-]+)/i;
+    const linkedInMatch = text.match(linkedInRegex);
+    if (linkedInMatch) parsedData.linkedIn = 'https://' + linkedInMatch[1];
+
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+      const line = lines[i].trim();
+      if (/^[A-Z][a-z]+(\s+[A-Z][a-z]+){1,2}$/.test(line)) {
+        const lower = line.toLowerCase();
+        if (!lower.includes("resume") && !lower.includes("curriculum") && !lower.includes("cv")) {
+          const parts = line.split(' ');
+          parsedData.firstName = parts[0];
+          parsedData.lastName = parts.slice(1).join(' ');
+          break;
+        }
+      }
+    }
+
+    const jobTitleRegex = /(Software Engineer|Frontend Developer|Backend Developer|Full Stack Engineer|Data Scientist|Product Manager|Project Manager|UI\/UX Designer|Graphic Designer|Marketing Manager|Sales Executive|Accountant|Financial Analyst|HR Manager|Teacher|Nurse|Doctor|Electrician|Plumber)/i;
+    const jobMatch = text.match(jobTitleRegex);
+    if (jobMatch) parsedData.jobTitle = jobMatch[1];
+
+    const uniRegex = /([A-Za-z\s]+ (University|College|Institute|Academy)(?: of [A-Za-z\s]+)?)/i;
+    const uniMatch = text.match(uniRegex);
+    if (uniMatch) parsedData.university = uniMatch[0].trim();
+
+    const commonSkills = [
+      'JavaScript', 'TypeScript', 'React', 'Node.js', 'Python', 'Java', 'C++', 'C#', 
+      'SQL', 'NoSQL', 'MongoDB', 'PostgreSQL', 'AWS', 'Azure', 'Docker', 'Kubernetes',
+      'HTML', 'CSS', 'Tailwind', 'Git', 'Agile', 'Scrum', 'Figma', 'Photoshop',
+      'Excel', 'Accounting', 'Salesforce', 'Marketing', 'SEO', 'Leadership', 'Management'
+    ];
+    const lowerText = text.toLowerCase();
+    for (const skill of commonSkills) {
+      const escapedSkill = skill.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(?:^|[^a-z0-9])${escapedSkill}(?:[^a-z0-9]|$)`, 'i');
+      if (regex.test(lowerText)) parsedData.skills.push(skill);
+    }
+
+    return { success: true, data: parsedData };
+  } catch (error) {
+    console.error('Resume parsing error:', error);
+    throw new functions.https.HttpsError('internal', 'Failed to parse resume: ' + error.message);
+  }
+});

@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
-import { uploadAvatar } from '../services/storage';
+import { db, functions } from '../services/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { uploadAvatar, uploadResume } from '../services/storage';
 import { logoutUser } from '../services/auth';
 import {
   Briefcase, GraduationCap, User, ChevronRight, ChevronLeft,
-  Check, Loader2, Star, Camera, Plus, X, LogOut,
+  Check, Loader2, Star, Camera, Plus, X, LogOut, UploadCloud, CheckCircle
 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ export default function Onboarding() {
   const { currentUser, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const avatarInputRef = useRef(null);
+  const resumeInputRef = useRef(null);
 
   const [step, setStep] = useState(0);
   const [selectedRole, setSelectedRole] = useState('');
@@ -59,6 +61,8 @@ export default function Onboarding() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [parsingResume, setParsingResume] = useState(false);
+  const [resumeSuccess, setResumeSuccess] = useState('');
 
   // Redirect if already done & pre-populate optional fields
   useEffect(() => {
@@ -116,6 +120,69 @@ export default function Onboarding() {
     if (!file) return;
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  // ─── Resume helper ───
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setParsingResume(true);
+    setError('');
+    setResumeSuccess('');
+    
+    try {
+      // 1. Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // 2. Call backend function
+      const parseResumeFn = httpsCallable(functions, 'parseResume');
+      const response = await parseResumeFn({ 
+        fileData: base64, 
+        fileType: file.type || file.name 
+      });
+      
+      const data = response.data.data;
+      
+      // 3. Upload the resume file to Firebase Storage for profile display
+      const uploadResult = await uploadResume(currentUser.uid, file);
+      let newResumeUrl = null;
+      if (uploadResult.url) {
+        newResumeUrl = uploadResult.url;
+      } else {
+        console.warn("Resume parsed but failed to upload to storage: ", uploadResult.error);
+      }
+      
+      if (data.firstName) setFirstName(data.firstName);
+      if (data.lastName) setLastName(data.lastName);
+      if (data.phone) setPhone(data.phone);
+      
+      setFormData(prev => ({
+        ...prev,
+        ...(data.jobTitle ? { jobTitle: data.jobTitle } : {}),
+        ...(data.company ? { company: data.company } : {}),
+        ...(data.university ? { university: data.university } : {}),
+        ...(data.email ? { email: data.email } : {}),
+        ...(data.linkedIn ? { linkedIn: data.linkedIn } : {}),
+        ...(newResumeUrl ? { resumeUrl: newResumeUrl } : {})
+      }));
+      
+      if (data.skills && data.skills.length > 0) {
+        setSkills(prev => [...new Set([...prev, ...data.skills])]);
+      }
+      
+      setResumeSuccess('Resume parsed! Please review the auto-filled fields below.');
+    } catch (err) {
+      setError('Failed to parse resume: ' + err.message);
+    }
+    
+    setParsingResume(false);
+    if (resumeInputRef.current) resumeInputRef.current.value = '';
   };
 
   // ─── Final Submit (Step 2 → Details saved, then Step 3 → profile/avatar saved) ───
@@ -369,6 +436,31 @@ export default function Onboarding() {
               {error && <div className="mb-5 bg-red-50 text-red-600 p-4 rounded-xl text-sm font-medium border border-red-100">{error}</div>}
 
               <form onSubmit={handleDetailsSubmit} className="space-y-5">
+
+                {/* ─── Resume Upload ─── */}
+                <div 
+                  className="bg-white border-2 border-dashed border-primary-200 bg-primary-50 rounded-2xl shadow-sm p-6 text-center hover:bg-primary-100/50 transition-colors cursor-pointer" 
+                  onClick={() => !parsingResume && resumeInputRef.current?.click()}
+                >
+                  <input ref={resumeInputRef} type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleResumeUpload} className="hidden" />
+                  {parsingResume ? (
+                    <div className="flex flex-col items-center justify-center gap-2 text-primary-600">
+                      <Loader2 className="w-8 h-8 animate-spin" />
+                      <p className="font-semibold">Extracting your details...</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 text-primary-700">
+                      <div className="bg-white p-3 rounded-full shadow-sm text-primary-600"><UploadCloud className="w-6 h-6" /></div>
+                      <h3 className="font-bold text-lg">Upload DOCX Resume to Autofill</h3>
+                      <p className="text-sm opacity-80 max-w-sm">Scan your ATS-friendly Word document (.docx) to automatically fill out details and skills.</p>
+                      {resumeSuccess && (
+                        <div className="mt-3 flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg text-sm font-semibold">
+                          <CheckCircle className="w-4 h-4" /> {resumeSuccess}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* ─── Optional Personal Info ─── */}
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 space-y-4">
