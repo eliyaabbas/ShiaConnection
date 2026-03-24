@@ -1,6 +1,7 @@
 {
   "auth": {},
   "firestore": {
+    "database": "shiaconnectiondb",
     "rules": "firestore.rules"
   },
   "functions": [
