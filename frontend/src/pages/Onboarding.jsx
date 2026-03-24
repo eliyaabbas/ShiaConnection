@@ -46,6 +46,7 @@ export default function Onboarding() {
   const [error, setError] = useState('');
 
   // Optional personal info fields (collected during onboarding)
+  const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
@@ -66,6 +67,7 @@ export default function Onboarding() {
     if (userProfile?.role && !selectedRole) setSelectedRole(userProfile.role);
     // Pre-populate optional personal info from existing profile
     if (userProfile) {
+      if (userProfile.firstName && !firstName) setFirstName(userProfile.firstName);
       if (userProfile.lastName && !lastName) setLastName(userProfile.lastName);
       if (userProfile.gender && !gender) setGender(userProfile.gender);
       if (userProfile.phone && !phone) setPhone(userProfile.phone);
@@ -125,6 +127,7 @@ export default function Onboarding() {
       // Use setDoc+merge so it works even if doc doesn't fully exist yet
       await setDoc(doc(db, 'users', currentUser.uid), {
         ...formData,
+        firstName: firstName.trim(),
         lastName: lastName.trim(),
         gender,
         phone: phone.trim(),
@@ -376,6 +379,13 @@ export default function Onboarding() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className={labelClass}>
+                        <span className="mr-1.5">👤</span>First Name
+                      </label>
+                      <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)}
+                        placeholder="e.g. Ali" className={inputClass} required />
+                    </div>
+                    <div>
+                      <label className={labelClass}>
                         <span className="mr-1.5">👤</span>Last Name
                       </label>
                       <input type="text" value={lastName} onChange={e => setLastName(e.target.value)}
@@ -388,16 +398,16 @@ export default function Onboarding() {
                       <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                         placeholder="+91 9876543210" className={inputClass} />
                     </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>
-                      <span className="mr-1.5">⚧</span>Gender
-                    </label>
-                    <select value={gender} onChange={e => setGender(e.target.value)} className={`${inputClass} cursor-pointer`}>
-                      <option value="">Prefer not to say</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
+                    <div>
+                      <label className={labelClass}>
+                        <span className="mr-1.5">⚧</span>Gender
+                      </label>
+                      <select value={gender} onChange={e => setGender(e.target.value)} className={`${inputClass} cursor-pointer`}>
+                        <option value="">Prefer not to say</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 

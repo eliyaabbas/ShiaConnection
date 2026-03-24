@@ -88,7 +88,22 @@ export default function ProfileHero({
         </div>
 
         <div className="mt-4">
-          <h1 className="text-2xl font-bold text-slate-900 leading-tight">{heroName}</h1>
+          {/* Name Editor */}
+          {editingField === 'name' ? (
+            <div className="flex items-center gap-2 mb-2">
+              <input value={editData.firstName || ''} onChange={e => setEditData({ ...editData, firstName: e.target.value })}
+                placeholder="First Name" className="w-1/3 border border-primary-400 rounded-lg px-2 py-1 text-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-300" />
+              <input value={editData.lastName || ''} onChange={e => setEditData({ ...editData, lastName: e.target.value })}
+                placeholder="Last Name" className="w-1/3 border border-primary-400 rounded-lg px-2 py-1 text-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-300" />
+              <button onClick={async () => { await saveField('firstName', editData.firstName); await saveField('lastName', editData.lastName); setEditingField(null); }} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded"><Check className="w-5 h-5" /></button>
+              <button onClick={() => setEditingField(null)} className="text-slate-400 hover:bg-slate-100 p-1 rounded"><X className="w-5 h-5" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-slate-900 leading-tight">{heroName}</h1>
+              {isOwnProfile && <button onClick={() => { setEditData({ ...editData, firstName: profile.firstName || '', lastName: profile.lastName || '' }); setEditingField('name'); }} className="text-slate-400 hover:text-primary-600 p-0.5" title="Edit Name"><PenSquare className="w-4 h-4" /></button>}
+            </div>
+          )}
           
           {/* Headline Editor */}
           {editingField === 'headline' ? (
