@@ -1,6 +1,6 @@
 export default function NetworkSidebar({ connectionsCount, invitationsCount, onShowConnections, showConnections }) {
   return (
-    <div className="hidden md:block col-span-1 bg-white border border-slate-200 rounded-xl shadow-sm p-4 h-fit">
+    <div className="block col-span-1 bg-white border border-slate-200 rounded-xl shadow-sm p-4 h-fit">
       <h3 className="font-semibold text-slate-800 mb-4 px-1">Manage my network</h3>
       <ul className="space-y-0.5">
         <li

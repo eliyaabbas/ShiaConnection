@@ -7,7 +7,7 @@ export default function FeedSidebar({ suggestedConnections }) {
   const fullName = userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : '';
 
   return (
-    <div className="hidden lg:flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
 
 
       {/* Suggested Connections */}

@@ -16,7 +16,8 @@ export default function Layout() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchOpen, setSearchOpen] = useState(false);
-  const searchRef = useRef(null);
+  const desktopSearchRef = useRef(null);
+  const mobileSearchRef = useRef(null);
 
   const fullName = userProfile
     ? `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim()
@@ -65,7 +66,13 @@ export default function Layout() {
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false); };
+    const handler = (e) => { 
+      if (
+        (desktopSearchRef.current && desktopSearchRef.current.contains(e.target)) ||
+        (mobileSearchRef.current && mobileSearchRef.current.contains(e.target))
+      ) return;
+      setSearchOpen(false); 
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -90,7 +97,7 @@ export default function Layout() {
               <span className="hidden sm:inline">ShiaConnection</span>
             </Link>
 
-            <div ref={searchRef} className="hidden sm:flex relative group w-48 md:w-64 lg:w-80">
+            <div ref={desktopSearchRef} className="hidden sm:flex relative group w-48 md:w-64 lg:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
               <input
                 type="text"
@@ -169,6 +176,40 @@ export default function Layout() {
               </div>
             </div>
 
+            {/* Mobile Search */}
+            <div ref={mobileSearchRef} className="px-4 py-3 border-b border-slate-100 relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Search people..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+                  className="w-full pl-9 pr-4 py-1.5 bg-slate-100 hover:bg-slate-200 focus:bg-white border border-transparent focus:border-primary-400 focus:ring-2 focus:ring-primary-100 rounded-full text-sm outline-none transition-all placeholder-slate-400"
+                />
+              </div>
+              {searchOpen && searchResults.length > 0 && (
+                <div className="absolute top-full left-4 right-4 mt-1 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50 max-h-60 overflow-y-auto">
+                  {searchResults.map(user => (
+                    <button key={`mobile-${user.id}`} onClick={() => handleSelectResult(user.id)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left">
+                      <Avatar src={user.avatarUrl} name={`${user.firstName} ${user.lastName}`} size="sm" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-slate-500 truncate">{user.role}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {searchOpen && searchResults.length === 0 && searchQuery.trim() && (
+                <div className="absolute top-full left-4 right-4 mt-1 bg-white rounded-xl shadow-lg border border-slate-200 p-4 z-50">
+                  <p className="text-sm text-slate-500 text-center">No results for "{searchQuery}"</p>
+                </div>
+              )}
+            </div>
+
             <div className="px-3 py-4 space-y-0.5 flex-1">
               <MobileMenuItem to="/" icon={<Home className="w-5 h-5" />} label="Home" active={isActive('/')} />
               <MobileMenuItem to="/network" icon={<Users className="w-5 h-5" />} label="My Network" active={isActive('/network')} />
@@ -238,8 +279,8 @@ export default function Layout() {
 
             <ul className="px-2 space-y-0.5">
               <SidebarItem to="/saved"   icon={<Bookmark className="w-[18px] h-[18px]" />} label="Saved Items"  active={isActive('/saved')} />
-              <SidebarItem to="/premium" icon={<Star     className="w-[18px] h-[18px] text-amber-500" />} label="Try Premium"
-                customColor="text-amber-600 font-semibold" hoverColor="hover:bg-amber-50 hover:text-amber-700" />
+              {/* <SidebarItem to="/premium" icon={<Star     className="w-[18px] h-[18px] text-amber-500" />} label="Try Premium"
+                customColor="text-amber-600 font-semibold" hoverColor="hover:bg-amber-50 hover:text-amber-700" /> */}
             </ul>
 
             <div className="mx-4 mt-3 border-t border-slate-100 pt-2">

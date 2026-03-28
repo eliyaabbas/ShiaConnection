@@ -143,33 +143,37 @@ export default function Auth() {
       <div className="max-w-5xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]">
         
         {/* ─── Left Brand Sidebar ─── */}
-        <div className="md:w-5/12 bg-primary-900 text-white p-10 flex flex-col justify-between">
+        <div className="md:w-5/12 bg-primary-900 text-white p-6 md:p-10 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-10">
+            <div className="flex items-center gap-3 md:mb-10">
               <div className="bg-white/10 p-2 rounded-lg"><span className="font-bold text-xl">✓</span></div>
               <h1 className="text-2xl font-bold tracking-tight">ShiaConnection</h1>
             </div>
-            <h2 className="text-4xl font-extrabold mb-3">
-              {isLogin ? 'Welcome Back' : 'Join Today'}
-            </h2>
-            <p className="text-primary-100 text-lg mb-10">
-              {isLogin ? 'Continue your professional journey' : 'Your professional journey starts here'}
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <FeatureCard icon="🤝" title="Build Network" />
-              <FeatureCard icon="💼" title="Find Jobs" />
-              <FeatureCard icon="📈" title="Grow Career" />
-              <FeatureCard icon="🎯" title="Find Mentors" />
+            
+            <div className="hidden md:block">
+              <h2 className="text-4xl font-extrabold mb-3 mt-6 md:mt-0">
+                {isLogin ? 'Welcome Back' : 'Join Today'}
+              </h2>
+              <p className="text-primary-100 text-lg mb-10">
+                {isLogin ? 'Continue your professional journey' : 'Your professional journey starts here'}
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <FeatureCard icon="🤝" title="Build Network" />
+                <FeatureCard icon="💼" title="Find Jobs" />
+                <FeatureCard icon="📈" title="Grow Career" />
+                <FeatureCard icon="🎯" title="Find Mentors" />
+              </div>
             </div>
           </div>
-          <div className="bg-white/10 rounded-xl p-5 mt-8 border border-white/5">
+          
+          <div className="hidden md:block bg-white/10 rounded-xl p-5 mt-8 border border-white/5">
             <h3 className="font-bold text-sm mb-2">Tanzeemul Makatib is a leading Shia Muslim educational organization in India, operating 1,246+ schools.</h3>
             <p className="text-xs text-primary-200">We created ShiaConnection to help our community connect professionally.</p>
           </div>
         </div>
 
         {/* ─── Right Form ─── */}
-        <div className="md:w-7/12 p-8 md:p-12 flex flex-col justify-center overflow-y-auto">
+        <div className="md:w-7/12 p-6 md:p-12 flex flex-col justify-center overflow-y-auto">
           <div className="max-w-md mx-auto w-full">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-slate-900 mb-2">{isLogin ? 'Sign In' : 'Create Account'}</h2>
